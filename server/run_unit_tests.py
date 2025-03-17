@@ -1,25 +1,34 @@
 #!/usr/bin/env python3
 """
 Run only the unit tests for the server (no integration tests)
+
+This is a legacy script that now redirects to the new test structure.
+Please use `python tests/run_tests.py --unit` instead.
 """
 
-import unittest
-from server.test_server import TestPromptFormatter, TestServerUnitTests
+import os
+import subprocess
+import sys
 
 if __name__ == "__main__":
-    # Create a test suite with just the unit tests
-    suite = unittest.TestSuite()
+    print("WARNING: This script is deprecated.")
+    print("Please use 'python tests/run_tests.py --unit' instead.")
+    print("Redirecting to new test runner...")
     
-    # Add the prompt formatter tests
-    suite.addTest(unittest.makeSuite(TestPromptFormatter))
+    # Get the project root directory
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(root_dir)
     
-    # Add the server unit tests
-    suite.addTest(unittest.makeSuite(TestServerUnitTests))
+    # Path to new test runner
+    test_runner = os.path.join(project_root, "tests", "run_tests.py")
     
-    # Run the tests
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
+    # Use the virtual environment's Python if available
+    venv_python = os.path.join(project_root, "venv", "bin", "python")
+    python_exec = venv_python if os.path.exists(venv_python) else sys.executable
     
-    # Exit with an error code if tests failed
-    import sys
-    sys.exit(not result.wasSuccessful())
+    # Run the new test runner
+    try:
+        result = subprocess.run([python_exec, test_runner, "--unit"], check=True)
+        sys.exit(result.returncode)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)

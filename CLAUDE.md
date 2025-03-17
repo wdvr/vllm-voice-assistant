@@ -66,11 +66,17 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
 - Unit Tests: `python tests/run_tests.py --unit`
 - End-to-End Tests: `python tests/run_tests.py --e2e`
 - Interactive E2E Testing: `python tests/run_tests.py --e2e --interactive`
-- Server Unit Tests (Legacy): `python server/run_unit_tests.py`
-- Server End-to-End Tests (Legacy): `python scripts/test_server_e2e.py --gpu-util 0.8`
+
+### Unit Testing:
+- Server Unit Tests: `python tests/unit/server/test_server.py`
+- Server Prompt Formatter Tests: `python tests/unit/server/test_prompt_formatter.py`
+- Client Unit Tests: `python tests/unit/client/test_voice_client.py`
+
+### Development and Testing:
 - Server Dev Testing: `python scripts/dev_test.py --model ./models/phi-2 --gpu-util 0.8`
 - Mock Server (CPU/macOS): `python scripts/mock_llm_server.py`
-- Client Dev Testing (Legacy, macOS): `python scripts/test_voice_client.py --device mps` (or `--device cpu`)
+- Client Dev Testing (macOS): `python scripts/test_voice_client.py --device mps` (or `--device cpu`)
+- Server E2E Tests: `python scripts/test_server_e2e.py --gpu-util 0.8`
 
 ## Code Style Guidelines
 - **Python**: Follow PEP 8 standards

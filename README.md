@@ -234,11 +234,13 @@ The project includes several testing tools to ensure everything works correctly:
 
 2. **Unit Tests**
    ```bash
-   # Run unit tests for the server components
-   python server/run_unit_tests.py
+   # Run all unit tests
+   python tests/run_tests.py --unit
    
-   # Run unit tests for the client components
+   # Run specific unit tests
    python tests/unit/client/test_voice_client.py
+   python tests/unit/server/test_prompt_formatter.py
+   python tests/unit/server/test_server.py
    ```
 
 3. **End-to-End Tests**

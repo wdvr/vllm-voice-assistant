@@ -31,10 +31,11 @@ def run_unit_tests():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     unit_test_dir = os.path.join(current_dir, 'unit')
     
-    # Import the test modules directly for now
+    # Run client and server tests
     client_tests_success = run_client_unit_tests()
+    server_tests_success = run_server_unit_tests()
     
-    return client_tests_success
+    return client_tests_success and server_tests_success
 
 
 def run_client_unit_tests():
@@ -59,6 +60,47 @@ def run_client_unit_tests():
     except subprocess.CalledProcessError:
         logger.error("Client unit tests failed")
         return False
+
+
+def run_server_unit_tests():
+    """Run server unit tests specifically."""
+    logger.info("Running server unit tests...")
+    
+    # Use subprocess to run the tests directly
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    
+    # Get test scripts
+    prompt_formatter_test = os.path.join(current_dir, 'unit', 'server', 'test_prompt_formatter.py')
+    server_test = os.path.join(current_dir, 'unit', 'server', 'test_server.py')
+    
+    # Use the virtual environment's Python if available
+    venv_python = os.path.join(project_root, "venv", "bin", "python")
+    python_exec = venv_python if os.path.exists(venv_python) else sys.executable
+    
+    # Run the prompt formatter tests
+    logger.info("Running prompt formatter tests...")
+    try:
+        formatter_result = subprocess.run([python_exec, prompt_formatter_test], check=False)
+        formatter_success = formatter_result.returncode == 0
+        if not formatter_success:
+            logger.error("Prompt formatter tests failed")
+    except Exception as e:
+        logger.error(f"Error running prompt formatter tests: {e}")
+        formatter_success = False
+    
+    # Run the server tests
+    logger.info("Running server API tests...")
+    try:
+        server_result = subprocess.run([python_exec, server_test], check=False)
+        server_success = server_result.returncode == 0
+        if not server_success:
+            logger.error("Server tests failed")
+    except Exception as e:
+        logger.error(f"Error running server tests: {e}")
+        server_success = False
+    
+    return formatter_success and server_success
 
 
 def run_e2e_tests(interactive=False):
