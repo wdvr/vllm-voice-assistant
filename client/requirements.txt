@@ -1,0 +1,7 @@
+requests>=2.31.0
+sounddevice>=0.4.6
+numpy>=1.24.0
+torch>=2.2.0  # For Raspberry Pi 4, consider a lighter version
+transformers>=4.38.0
+pyttsx3>=2.90
+openai-whisper>=20231117

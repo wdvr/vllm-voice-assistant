@@ -1,0 +1,17 @@
+[Unit]
+Description=Voice Assistant Client
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/vllm-voice-assistant
+ExecStart=/usr/bin/python3 /home/pi/vllm-voice-assistant/client/voice_client.py --server http://SERVER_IP:8000
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=vLLM Voice Assistant Server
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/path/to/vllm-voice-assistant
+ExecStart=/usr/bin/python3 /path/to/vllm-voice-assistant/server/vllm_server.py --model /path/to/vllm-voice-assistant/models/llama3-8b --gpu-memory-utilization 0.9
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=PATH=/usr/local/cuda-12.4/bin:/usr/local/bin:/usr/bin:/bin
+Environment=LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64
+
+[Install]
+WantedBy=multi-user.target
