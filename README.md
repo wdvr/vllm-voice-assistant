@@ -13,7 +13,7 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
 - NVIDIA drivers (minimum version 535)
 - CUDA 12.8.1 (tested and working as of March 2025)
 - cuDNN 9.8.0 (tested and working as of March 2025)
-- Python 3.13 (tested and working as of March 2025)
+- Python 3.12 (tested and working as of March 2025)
 
 #### Installation Steps
 
@@ -42,20 +42,20 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
 
 2. **Install Python and Dependencies**
    ```bash
-   # Install Python 3.13
+   # Install Python 3.12
    sudo add-apt-repository ppa:deadsnakes/ppa
    sudo apt update
-   sudo apt install python3.13 python3.13-dev python3.13-venv python3.13-full
+   sudo apt install python3.12 python3.12-dev python3.12-venv python3.12-full
    
    # Set up pip
-   python3.13 -m ensurepip
-   python3.13 -m pip install --upgrade pip
+   python3.12 -m ensurepip
+   python3.12 -m pip install --upgrade pip
    ```
 
 3. **Install vLLM**
    ```bash
-   # Create a virtual environment (recommended)
-   python3.13 -m venv venv
+   # Create a virtual environment
+   python3.12 -m venv venv
    source venv/bin/activate
    
    # Install vLLM and dependencies
@@ -78,7 +78,9 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
 5. **Running the vLLM Server**
    ```bash
    # Start server with Llama 3.2 (8B) model
-   python3 server/vllm_server.py --model ./models/llama3-8b --gpu-memory-utilization 0.9
+   # Make sure your virtual environment is activated
+   source venv/bin/activate
+   python server/vllm_server.py --model ./models/llama3-8b --gpu-memory-utilization 0.9
    ```
 
 6. **Setting up as a System Service**
@@ -111,15 +113,22 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
    sudo apt update
    sudo apt install -y python3-pip python3-dev portaudio19-dev python3-pyaudio espeak
    
+   # Create a virtual environment
+   python3 -m venv venv
+   source venv/bin/activate
+   
    # Install Python dependencies
    cd client
-   pip3 install -r requirements.txt
+   pip install -r requirements.txt
    ```
 
 3. **Running the Client**
    ```bash
+   # Make sure your virtual environment is activated
+   source venv/bin/activate
+   
    # Replace SERVER_IP with your Ubuntu server's IP address
-   python3 voice_client.py --server http://SERVER_IP:8000
+   python client/voice_client.py --server http://SERVER_IP:8000
    ```
 
 4. **Usage**
@@ -163,6 +172,10 @@ For developers who want to test or contribute to this project without setting up
    # Clone the repository
    git clone https://github.com/yourusername/vllm-voice-assistant.git
    cd vllm-voice-assistant
+   
+   # Create and activate virtual environment
+   python3.12 -m venv venv
+   source venv/bin/activate
    
    # Install dependencies
    pip install -r server/requirements.txt
