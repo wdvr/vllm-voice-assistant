@@ -7,6 +7,8 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
 
 1. **Backend Setup** [IN PROGRESS]
    - [DONE] Install CUDA 12.8.1 and cuDNN 9.8.0 dependencies
+   - [DONE] Create vLLM server base implementation with model-specific prompt formatting
+   - [DONE] Create testing infrastructure for server
    - [TODO] (#1) Install vLLM on Ubuntu server
    - [TODO] (#2) Download Llama 3.2 model (~8GB for 8B parameter version)
    - [TODO] (#3) Download DeepSeek model (~7GB for compatible version)
@@ -37,6 +39,8 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
    - [TODO] (#22) Add option to disable audio feedback for quiet operation
 
 5. **Development Tools**
+   - [DONE] Add test scripts for server unit and end-to-end testing
+   - [DONE] Add development test script for interactive testing
    - [TODO] (#23) Create local development environment setup script
    - [TODO] (#24) Add test script to run server/client on one machine
    - [TODO] (#25) Create simulation mode for testing without hardware
@@ -49,7 +53,11 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
 - Run Server: `python server/vllm_server.py --model ./models/llama3-8b --gpu-memory-utilization 0.9`
 - Client Setup: `pip install -r client/requirements.txt`
 - Run Client: `python client/voice_client.py --server http://SERVER_IP:8000`
-- Tests: (TBD as project develops)
+
+## Testing Commands
+- Unit Tests: `python server/run_unit_tests.py`
+- End-to-End Tests: `python scripts/test_server_e2e.py --gpu-util 0.8`
+- Dev Testing: `python scripts/dev_test.py --model ./models/phi-2 --gpu-util 0.8`
 
 ## Code Style Guidelines
 - **Python**: Follow PEP 8 standards
@@ -69,4 +77,15 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
 ## Architecture
 - Server: Ubuntu with NVIDIA GPU (2080Ti, 11GB VRAM) running vLLM inference
 - Client: Raspberry Pi with microphone and speaker
-- Communication: (TBD as project develops)
+- Communication: JSON API over HTTP/HTTPS
+  - /v1/completions: Generate responses from prompts
+  - /v1/models: List available models
+  - /v1/model/info: Get information about the loaded model
+
+## Implementation Progress (March 2025)
+- ✅ Created vLLM server with model-specific prompt formatting
+- ✅ Built comprehensive testing suite
+- ✅ Fixed model compatibility issues with various LLM models (Phi, Llama, DeepSeek)
+- ❌ Client implementation not yet started
+- ❌ Model switching functionality not yet implemented
+- ❌ Always-on functionality not yet implemented

@@ -158,6 +158,28 @@ For developers who want to test or contribute to this project without setting up
 
 For more detailed development instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Testing
+
+The project includes several testing tools to ensure everything works correctly:
+
+1. **Unit Tests**
+   ```bash
+   # Run unit tests for the server components
+   python server/run_unit_tests.py
+   ```
+
+2. **End-to-End Tests**
+   ```bash
+   # Run end-to-end tests that start the server and verify responses
+   python scripts/test_server_e2e.py
+   ```
+
+3. **Manual Testing with Dev Script**
+   ```bash
+   # Test with interactive mode
+   python scripts/dev_test.py --model ./models/phi-2 --gpu-util 0.8
+   ```
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
