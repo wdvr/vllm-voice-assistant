@@ -6,7 +6,7 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
 ## Development Roadmap & TODOs
 
 1. **Backend Setup** [IN PROGRESS]
-   - [TODO] Install CUDA and cuDNN dependencies
+   - [DONE] Install CUDA 12.8.1 and cuDNN 9.8.0 dependencies
    - [TODO] Install vLLM on Ubuntu server
    - [TODO] Download Llama 3.2 model (~8GB for 8B parameter version)
    - [TODO] Download DeepSeek model (~7GB for compatible version)

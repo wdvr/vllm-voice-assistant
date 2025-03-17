@@ -11,8 +11,9 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
 - Ubuntu 22.04 or later
 - NVIDIA GPU with at least 11GB VRAM (optimized for RTX 2080Ti)
 - NVIDIA drivers (minimum version 535)
-- CUDA 12.4 (latest as of March 2025)
-- cuDNN 9.0 (latest as of March 2025)
+- CUDA 12.8.1 (tested and working as of March 2025)
+- cuDNN 9.8.0 (tested and working as of March 2025)
+- Python 3.13 (tested and working as of March 2025)
 
 #### Installation Steps
 
@@ -22,18 +23,18 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
    sudo apt update
    sudo apt install nvidia-driver-535
    
-   # Install CUDA 12.4
-   wget https://developer.download.nvidia.com/compute/cuda/12.4.0/local_installers/cuda_12.4.0_550.54.14_linux.run
-   sudo sh cuda_12.4.0_550.54.14_linux.run
+   # Install CUDA 12.8.1
+   wget https://developer.download.nvidia.com/compute/cuda/12.8.1/local_installers/cuda_12.8.1_555.42.03_linux.run
+   sudo sh cuda_12.8.1_555.42.03_linux.run
    
    # Set up environment variables
-   echo 'export PATH=/usr/local/cuda-12.4/bin:$PATH' >> ~/.bashrc
-   echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+   echo 'export PATH=/usr/local/cuda-12.8/bin:$PATH' >> ~/.bashrc
+   echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
    source ~/.bashrc
    
    # Install cuDNN (download from NVIDIA requires an account)
    # After downloading the .deb file from NVIDIA Developer site:
-   sudo dpkg -i cudnn-local-repo-ubuntu2204-9.0.0.x_1.0-1_amd64.deb
+   sudo dpkg -i cudnn-local-repo-ubuntu2204-9.8.0.x_1.0-1_amd64.deb
    sudo cp /var/cudnn-local-repo-*/cudnn-*-keyring.gpg /usr/share/keyrings/
    sudo apt update
    sudo apt install libcudnn9
@@ -41,13 +42,24 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
 
 2. **Install Python and Dependencies**
    ```bash
-   sudo apt install python3.10-dev python3-pip
-   python3 -m pip install --upgrade pip
+   # Install Python 3.13
+   sudo add-apt-repository ppa:deadsnakes/ppa
+   sudo apt update
+   sudo apt install python3.13 python3.13-dev python3.13-venv python3.13-full
+   
+   # Set up pip
+   python3.13 -m ensurepip
+   python3.13 -m pip install --upgrade pip
    ```
 
 3. **Install vLLM**
    ```bash
-   pip install vllm
+   # Create a virtual environment (recommended)
+   python3.13 -m venv venv
+   source venv/bin/activate
+   
+   # Install vLLM and dependencies
+   pip install vllm torch>=2.2.0
    ```
 
 4. **Download Models**
