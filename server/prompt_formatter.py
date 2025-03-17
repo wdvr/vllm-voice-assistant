@@ -28,7 +28,7 @@ class PromptFormatter:
             
             # Phi-2 model
             "phi": {
-                "chat": "Instruct: {prompt}\nOutput: ",
+                "chat": "Question: {prompt}\n\nAnswer: ",
                 "parser": self._parse_general_response
             },
             
@@ -116,7 +116,13 @@ class PromptFormatter:
         
         # Use the appropriate parser
         parser = template.get("parser", self._parse_general_response)
-        return parser(response)
+        
+        # For debugging
+        print(f"Raw response: {repr(response)}")
+        parsed = parser(response)
+        print(f"Parsed response: {repr(parsed)}")
+        
+        return parsed
     
     def _parse_llama_response(self, response: str) -> str:
         """Parse response from Llama models."""
