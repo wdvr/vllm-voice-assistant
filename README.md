@@ -65,6 +65,41 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
    sudo systemctl status vllm-server
    ```
 
+### Client Setup for Development (macOS)
+
+1. **Setup Development Environment**
+   ```bash
+   # Create a virtual environment
+   python3 -m venv venv
+   source venv/bin/activate
+   
+   # Install Python dependencies
+   pip install -r client/requirements.txt
+   ```
+
+2. **Running the Mock Server (No GPU Required)**
+   ```bash
+   # Start the mock LLM server in one terminal
+   python scripts/mock_llm_server.py
+   ```
+
+3. **Testing the Client**
+   ```bash
+   # In another terminal, run the test script
+   # With Metal GPU acceleration (Apple Silicon)
+   python scripts/test_voice_client.py --device mps
+   
+   # Or with CPU (any Mac)
+   python scripts/test_voice_client.py --device cpu
+   ```
+
+4. **Usage in Test Mode**
+   - Type `r` to start recording your voice
+   - Ask your question or give a command
+   - Press Enter to stop recording
+   - The system will transcribe your speech, send it to the mock server, and speak the response
+   - Type `q` to quit the test
+
 ### Client Setup (Raspberry Pi)
 
 1. **Setup Raspberry Pi OS**
@@ -132,7 +167,7 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
 
 For developers who want to test or contribute to this project without setting up the full hardware environment:
 
-1. **Local Development**
+1. **Local Development with GPU**
    ```bash
    # Clone the repository
    git clone https://github.com/yourusername/vllm-voice-assistant.git
@@ -153,8 +188,28 @@ For developers who want to test or contribute to this project without setting up
    python scripts/dev_test.py --model ./models/phi-2
    ```
 
-2. **Testing Without Voice Hardware**
-   The `scripts/dev_test.py` script allows you to test the system with text input instead of voice, making it easier to develop and test without Raspberry Pi hardware.
+2. **Development Without GPU (macOS/Windows)**
+   ```bash
+   # Clone the repository
+   git clone https://github.com/yourusername/vllm-voice-assistant.git
+   cd vllm-voice-assistant
+   
+   # Create and activate virtual environment
+   python -m venv venv
+   source venv/bin/activate  # on macOS/Linux
+   # or
+   venv\Scripts\activate     # on Windows
+   
+   # Install client dependencies (includes mock server)
+   pip install -r client/requirements.txt
+   
+   # Run the mock LLM server (no real AI, just canned responses)
+   python scripts/mock_llm_server.py
+   ```
+
+3. **Testing Without Voice Hardware**
+   - The `scripts/dev_test.py` script allows you to test the server with text input
+   - The `scripts/test_voice_client.py` script allows you to test the client with your computer's microphone
 
 For more detailed development instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -162,22 +217,50 @@ For more detailed development instructions, see [CONTRIBUTING.md](CONTRIBUTING.m
 
 The project includes several testing tools to ensure everything works correctly:
 
-1. **Unit Tests**
+1. **Unified Test Runner**
+   ```bash
+   # Run all tests
+   python tests/run_tests.py --all
+   
+   # Run just unit tests
+   python tests/run_tests.py --unit
+   
+   # Run just end-to-end tests
+   python tests/run_tests.py --e2e
+   
+   # Run end-to-end tests with interactive mode
+   python tests/run_tests.py --e2e --interactive
+   ```
+
+2. **Unit Tests**
    ```bash
    # Run unit tests for the server components
    python server/run_unit_tests.py
+   
+   # Run unit tests for the client components
+   python tests/unit/client/test_voice_client.py
    ```
 
-2. **End-to-End Tests**
+3. **End-to-End Tests**
    ```bash
-   # Run end-to-end tests that start the server and verify responses
+   # Run complete end-to-end test with mock server and client
+   python tests/e2e/test_voice_assistant.py
+   
+   # Run server-specific end-to-end tests (requires GPU)
    python scripts/test_server_e2e.py
    ```
 
-3. **Manual Testing with Dev Script**
+4. **Manual Testing with Dev Scripts**
    ```bash
-   # Test with interactive mode
+   # Test vLLM server in interactive mode (requires GPU)
    python scripts/dev_test.py --model ./models/phi-2 --gpu-util 0.8
+   
+   # Test with mock server (no GPU required)
+   python scripts/mock_llm_server.py
+   
+   # Test voice client on macOS
+   python scripts/test_voice_client.py --device mps  # for Apple Silicon
+   python scripts/test_voice_client.py --device cpu  # for any Mac
    ```
 
 ## License

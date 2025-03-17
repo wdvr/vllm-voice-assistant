@@ -17,14 +17,18 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
    - [TODO] (#6) Create systemd service for automatic server startup
    - [TODO] (#7) Add server health monitoring and automatic recovery
 
-2. **Voice Interface**
-   - [TODO] (#8) Create Python client for Raspberry Pi
-   - [TODO] (#9) Implement speech-to-text using Whisper or similar
-   - [TODO] (#10) Create API to send prompts to vLLM server
-   - [TODO] (#11) Implement text-to-speech for responses
+2. **Voice Interface** [IN PROGRESS]
+   - [IN PROGRESS] (#8) Create Python client for Raspberry Pi
+   - [IN PROGRESS] (#9) Implement speech-to-text using Whisper or similar
+   - [IN PROGRESS] (#10) Create API to send prompts to vLLM server
+   - [IN PROGRESS] (#11) Implement text-to-speech for responses
    - [TODO] (#12) Set up proper audio input/output on Raspberry Pi
    - [TODO] (#13) Create systemd service for automatic client startup
    - [TODO] (#14) Add reconnection logic for network interruptions
+   - [TODO] (#29) Implement voice activity detection to auto-stop recording
+   - [TODO] (#30) Add support for continuous conversation mode
+   - [TODO] (#31) Create more user-friendly interface for voice client
+   - [TODO] (#32) Add configuration file for client settings
 
 3. **Model Switching**
    - [TODO] (#15) Design model config storage format
@@ -38,11 +42,14 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
    - [TODO] (#21) Optimize for low power consumption
    - [TODO] (#22) Add option to disable audio feedback for quiet operation
 
-5. **Development Tools**
+5. **Development Tools** [IN PROGRESS]
    - [DONE] Add test scripts for server unit and end-to-end testing
    - [DONE] Add development test script for interactive testing
+   - [DONE] (#34) Create mock LLM server for development without GPU
+   - [DONE] (#33) Add support for Metal GPU acceleration (MPS) on macOS
+   - [DONE] (#35) Implement end-to-end test for voice assistant
    - [TODO] (#23) Create local development environment setup script
-   - [TODO] (#24) Add test script to run server/client on one machine
+   - [DONE] (#24) Add test script to run server/client on one machine
    - [TODO] (#25) Create simulation mode for testing without hardware
    - [TODO] (#26) Set up CI/CD pipeline for testing
    - [TODO] (#27) Add debug mode with detailed logging
@@ -55,9 +62,15 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
 - Run Client: `python client/voice_client.py --server http://SERVER_IP:8000`
 
 ## Testing Commands
-- Unit Tests: `python server/run_unit_tests.py`
-- End-to-End Tests: `python scripts/test_server_e2e.py --gpu-util 0.8`
-- Dev Testing: `python scripts/dev_test.py --model ./models/phi-2 --gpu-util 0.8`
+- All Tests: `python tests/run_tests.py --all`
+- Unit Tests: `python tests/run_tests.py --unit`
+- End-to-End Tests: `python tests/run_tests.py --e2e`
+- Interactive E2E Testing: `python tests/run_tests.py --e2e --interactive`
+- Server Unit Tests (Legacy): `python server/run_unit_tests.py`
+- Server End-to-End Tests (Legacy): `python scripts/test_server_e2e.py --gpu-util 0.8`
+- Server Dev Testing: `python scripts/dev_test.py --model ./models/phi-2 --gpu-util 0.8`
+- Mock Server (CPU/macOS): `python scripts/mock_llm_server.py`
+- Client Dev Testing (Legacy, macOS): `python scripts/test_voice_client.py --device mps` (or `--device cpu`)
 
 ## Code Style Guidelines
 - **Python**: Follow PEP 8 standards
@@ -86,6 +99,14 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
 - ✅ Created vLLM server with model-specific prompt formatting
 - ✅ Built comprehensive testing suite
 - ✅ Fixed model compatibility issues with various LLM models (Phi, Llama, DeepSeek)
-- ❌ Client implementation not yet started
+- ✅ Created mock LLM server for development on macOS
+- ✅ Added Metal GPU acceleration support for macOS development
+- 🚧 Client implementation in progress
+  - ✅ Basic speech-to-text with Whisper implemented
+  - ✅ Basic text-to-speech with pyttsx3 implemented
+  - ✅ API communication with server implemented
+  - ✅ Created development testing framework for macOS
+  - ✅ Implemented unit tests for client components
+  - ❌ Proper error handling and production readiness
 - ❌ Model switching functionality not yet implemented
 - ❌ Always-on functionality not yet implemented

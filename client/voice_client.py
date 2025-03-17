@@ -62,9 +62,23 @@ def initialize_whisper(device: str = "cpu"):
     """Initialize Whisper model for speech-to-text."""
     global transcriber
     try:
-        # Use smaller model for Raspberry Pi
+        # Use smaller model for development
         model_name = "openai/whisper-small"
-        logger.info(f"Loading Whisper model: {model_name}")
+        
+        # Check if we're on macOS and using MPS (Metal Performance Shaders)
+        if device == "mps":
+            try:
+                import torch
+                if torch.backends.mps.is_available():
+                    logger.info("Using MPS (Metal Performance Shaders) for Whisper on macOS")
+                else:
+                    logger.warning("MPS requested but not available, falling back to CPU")
+                    device = "cpu"
+            except (ImportError, AttributeError):
+                logger.warning("Could not check MPS availability, falling back to CPU")
+                device = "cpu"
+        
+        logger.info(f"Loading Whisper model: {model_name} on device: {device}")
         transcriber = pipeline(
             "automatic-speech-recognition",
             model=model_name,

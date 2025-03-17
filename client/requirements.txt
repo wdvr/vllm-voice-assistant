@@ -1,7 +1,19 @@
 requests>=2.31.0
 sounddevice>=0.4.6
 numpy>=1.24.0
-torch>=2.2.0  # For Raspberry Pi 4, consider a lighter version
+torch>=2.2.0  # Use native build for MacOS
 transformers>=4.38.0
 pyttsx3>=2.90
 openai-whisper>=20231117
+
+# Mock server dependencies
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pydantic>=2.7.0
+
+# Testing dependencies
+pytest>=7.4.0
+pytest-mock>=3.11.1
+
+# macOS specific dependencies
+pyobjc>=9.0.1  # Required for pyttsx3 on macOS
