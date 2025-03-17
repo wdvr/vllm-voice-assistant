@@ -75,7 +75,19 @@ async def list_models():
     """List available models."""
     if llm is None:
         return {"models": []}
-    return {"models": [llm.model_config.model]}
+    # Get the model name from the llm object
+    try:
+        # Try the newer vLLM API structure first
+        model_name = llm.get_model_config().model_id
+    except AttributeError:
+        try:
+            # Fallback to older vLLM API structure 
+            model_name = llm.model_config.model
+        except AttributeError:
+            # Last resort, use a generic name
+            model_name = "loaded-model"
+    
+    return {"models": [model_name]}
 
 
 @app.get("/v1/model/info", response_model=ModelInfoResponse)
@@ -88,9 +100,33 @@ async def model_info():
     gpu_memory_allocated = torch.cuda.memory_allocated() / (1024 ** 3)
     gpu_memory_reserved = torch.cuda.memory_reserved() / (1024 ** 3)
     
+    # Get the model name using the same logic as list_models
+    try:
+        # Try the newer vLLM API structure first
+        model_name = llm.get_model_config().model_id
+    except AttributeError:
+        try:
+            # Fallback to older vLLM API structure 
+            model_name = llm.model_config.model
+        except AttributeError:
+            # Last resort, use a generic name
+            model_name = "loaded-model"
+    
+    # Get max context length
+    try:
+        # Try newer vLLM API structure
+        max_len = llm.get_model_config().max_model_len
+    except AttributeError:
+        try:
+            # Fallback to older structure
+            max_len = llm.llm_engine.model_config.max_model_len
+        except AttributeError:
+            # Default value
+            max_len = 4096
+    
     return {
-        "model_name": llm.model_config.model,
-        "max_model_len": llm.llm_engine.model_config.max_model_len,
+        "model_name": model_name,
+        "max_model_len": max_len,
         "gpu_memory_usage": f"{gpu_memory_allocated:.2f} GB allocated, {gpu_memory_reserved:.2f} GB reserved"
     }
 
@@ -152,7 +188,20 @@ def load_model(model_path: str, gpu_mem_utilization: float, quantization: Option
             **quantization_kwargs
         )
         logger.info(f"Model loaded: {model_path}")
-        logger.info(f"Max sequence length: {llm.llm_engine.model_config.max_model_len}")
+        
+        # Log max sequence length safely
+        try:
+            # Try newer vLLM API structure
+            max_len = llm.get_model_config().max_model_len
+            logger.info(f"Max sequence length: {max_len}")
+        except AttributeError:
+            try:
+                # Fallback to older structure
+                max_len = llm.llm_engine.model_config.max_model_len
+                logger.info(f"Max sequence length: {max_len}")
+            except AttributeError:
+                logger.info("Could not determine max sequence length")
+        
         return True
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
