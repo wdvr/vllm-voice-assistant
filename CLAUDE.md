@@ -42,6 +42,7 @@ This project creates a voice assistant running on a Raspberry Pi that connects t
    - [TODO] Create simulation mode for testing without hardware
    - [TODO] Set up CI/CD pipeline for testing
    - [TODO] Add debug mode with detailed logging
+   - [TODO] Fix FastAPI deprecation warning: Replace @app.on_event with lifespan event handlers in server/vllm_server.py
 
 ## Build & Run Commands
 - Server Setup: `pip install -r server/requirements.txt`
