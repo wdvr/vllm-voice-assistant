@@ -17,52 +17,17 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
 
 #### Installation Steps
 
-1. **Install NVIDIA Drivers, CUDA, and cuDNN**
-   ```bash
-   # Install NVIDIA drivers
-   sudo apt update
-   sudo apt install nvidia-driver-535
-   
-   # Install CUDA 12.8.1
-   wget https://developer.download.nvidia.com/compute/cuda/12.8.1/local_installers/cuda_12.8.1_555.42.03_linux.run
-   sudo sh cuda_12.8.1_555.42.03_linux.run
-   
-   # Set up environment variables
-   echo 'export PATH=/usr/local/cuda-12.8/bin:$PATH' >> ~/.bashrc
-   echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
-   source ~/.bashrc
-   
-   # Install cuDNN (download from NVIDIA requires an account)
-   # After downloading the .deb file from NVIDIA Developer site:
-   sudo dpkg -i cudnn-local-repo-ubuntu2204-9.8.0.x_1.0-1_amd64.deb
-   sudo cp /var/cudnn-local-repo-*/cudnn-*-keyring.gpg /usr/share/keyrings/
-   sudo apt update
-   sudo apt install libcudnn9
-   ```
-
-2. **Install Python and Dependencies**
-   ```bash
-   # Install Python 3.12
-   sudo add-apt-repository ppa:deadsnakes/ppa
-   sudo apt update
-   sudo apt install python3.12 python3.12-dev python3.12-venv python3.12-full
-   
-   # Set up pip
-   python3.12 -m ensurepip
-   python3.12 -m pip install --upgrade pip
-   ```
-
-3. **Install vLLM**
+1. **Setup Virtual Environment**
    ```bash
    # Create a virtual environment
-   python3.12 -m venv venv
+   python3 -m venv venv
    source venv/bin/activate
    
-   # Install vLLM and dependencies
-   pip install vllm torch>=2.2.0
+   # Install dependencies
+   pip install -r server/requirements.txt
    ```
 
-4. **Download Models**
+2. **Download Models**
    ```bash
    # Create model directory
    mkdir -p models
@@ -75,7 +40,7 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
    huggingface-cli download deepseek-ai/deepseek-coder-7b-instruct-v1.5 --local-dir ./models/deepseek-coder-7b
    ```
 
-5. **Running the vLLM Server**
+3. **Running the vLLM Server**
    ```bash
    # Start server with Llama 3.2 (8B) model
    # Make sure your virtual environment is activated
@@ -83,7 +48,7 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
    python server/vllm_server.py --model ./models/llama3-8b --gpu-memory-utilization 0.9
    ```
 
-6. **Setting up as a System Service**
+4. **Setting up as a System Service (Optional)**
    ```bash
    # Edit the service file with your paths and username
    nano server/vllm-server.service
@@ -137,7 +102,7 @@ On the frontend this is using a Raspberry Pi with speaker and microphone to quer
    - Press Enter again to stop recording
    - The system will transcribe your speech, send it to the server, and speak the response
 
-5. **Setting up as a System Service**
+5. **Setting up as a System Service (Optional)**
    ```bash
    # Edit the service file with your server IP
    nano client/voice-client.service
