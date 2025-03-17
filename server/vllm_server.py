@@ -17,6 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from vllm import LLM, SamplingParams
 
+from prompt_formatter import formatter
+
 
 # Set up logging
 logging.basicConfig(
@@ -37,8 +39,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global LLM instance
+# Global variables
 llm = None
+model_path = None
 
 
 class GenerationRequest(BaseModel):
@@ -134,10 +137,17 @@ async def model_info():
 @app.post("/v1/completions", response_model=GenerationResponse)
 async def generate(request: GenerationRequest):
     """Generate text from a prompt."""
+    global model_path
+    
     if llm is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
     
     try:
+        # Format the prompt based on the model type
+        formatted_prompt = formatter.format_prompt(request.prompt, model_path)
+        logger.debug(f"Original prompt: {request.prompt}")
+        logger.debug(f"Formatted prompt: {formatted_prompt}")
+        
         sampling_params = SamplingParams(
             temperature=request.temperature,
             top_p=request.top_p,
@@ -146,8 +156,11 @@ async def generate(request: GenerationRequest):
             frequency_penalty=request.frequency_penalty,
         )
         
-        outputs = llm.generate(request.prompt, sampling_params)
-        generated_text = outputs[0].outputs[0].text
+        outputs = llm.generate(formatted_prompt, sampling_params)
+        raw_text = outputs[0].outputs[0].text
+        
+        # Parse the response to clean it up based on model type
+        generated_text = formatter.parse_response(raw_text, model_path)
         
         # Estimate token counts (actual counts would require tokenizer)
         prompt_tokens = len(request.prompt.split())
@@ -166,9 +179,13 @@ async def generate(request: GenerationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def load_model(model_path: str, gpu_mem_utilization: float, quantization: Optional[str] = None):
+def load_model(model_path_arg: str, gpu_mem_utilization: float, quantization: Optional[str] = None):
     """Load the LLM model."""
-    global llm
+    global llm, model_path
+    
+    # Set global model path for use in prompt formatting
+    model_path = model_path_arg
+    
     try:
         tensor_parallel_size = 1  # Single GPU setup
         
@@ -180,6 +197,11 @@ def load_model(model_path: str, gpu_mem_utilization: float, quantization: Option
                 quantization_kwargs = {"quantization": "squeezellm"}
             elif quantization == "gptq":
                 quantization_kwargs = {"quantization": "gptq"}
+        
+        # Detect model type for logging purposes
+        model_type = formatter.detect_model_type(model_path)
+        logger.info(f"Detected model type: {model_type}")
+        logger.info(f"Using appropriate prompt templates for {model_type} models")
             
         llm = LLM(
             model=model_path,
