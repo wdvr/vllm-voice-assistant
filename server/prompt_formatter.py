@@ -22,26 +22,28 @@ class PromptFormatter:
             # Llama family of models
             "llama": {
                 "chat": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
-                "system_prompt": "You are a helpful, respectful and honest assistant.",
+                "system_prompt": "You are a helpful, respectful and honest assistant for a voice interface.",
                 "parser": self._parse_llama_response
             },
             
             # Phi-2 model
             "phi": {
-                "chat": "Question: {prompt}\n\nAnswer: ",
+                "chat": "System: You are a voice assistant. {system_prompt}\n\nQuestion: {prompt}\n\nAnswer: ",
+                "system_prompt": "Keep your responses brief and to the point.",
                 "parser": self._parse_general_response
             },
             
             # DeepSeek model
             "deepseek": {
-                "chat": "<s><|user|>\n{prompt}\n<|assistant|>\n",
-                "system_prompt": "You are DeepSeek, an AI assistant by DeepSeek Company. Always be helpful, harmless, and honest.",
+                "chat": "<s><|system|>\n{system_prompt}\n<|user|>\n{prompt}\n<|assistant|>\n",
+                "system_prompt": "You are a voice assistant. Keep answers brief and to the point.",
                 "parser": self._parse_general_response
             },
             
             # Default template for any unrecognized model
             "default": {
-                "chat": "{prompt}\n",
+                "chat": "System: {system_prompt}\n\nUser: {prompt}\n\nAssistant: ",
+                "system_prompt": "You are a voice assistant. Provide brief, direct answers.",
                 "parser": self._parse_general_response
             }
         }
@@ -88,24 +90,27 @@ class PromptFormatter:
         model_type = self.detect_model_type(model_path)
         template = self.templates.get(model_type, self.templates["default"])
         
-        # Build the final prompt with pre-prompt if provided
+        # Start with the user's original prompt
         final_prompt = prompt
         
-        # Add pre-prompt instructions if provided
-        if pre_prompt and pre_prompt.strip():
-            final_prompt = f"{pre_prompt}: {prompt}"
-        
-        # Always add instruction for concise response
-        final_prompt = f"{final_prompt} Please provide a concise, direct answer."
+        # Always add instruction for concise response, but do this at the end
+        # so it doesn't get included in conversation history
+        final_prompt = f"{final_prompt}. Answer concisely."
         
         # Get chat template and populate it
         chat_template = template["chat"]
         
         # Check if system prompt should be included
         if "{system_prompt}" in chat_template and "system_prompt" in template:
-            # Enhance system prompt to encourage concise answers
+            # Start with the base system prompt
             system_prompt = template["system_prompt"]
-            system_prompt += " Always provide concise, direct answers to questions."
+            
+            # Incorporate pre-prompt into system message if provided
+            if pre_prompt and pre_prompt.strip():
+                system_prompt = f"{system_prompt} {pre_prompt}."
+            
+            # Always add instructions for concise answers to the system prompt
+            system_prompt += " Always provide concise, direct answers to questions. If asked for a one-word answer, respond with just one word."
             
             return chat_template.format(
                 prompt=final_prompt,
