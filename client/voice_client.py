@@ -135,6 +135,15 @@ def transcribe_audio(audio_data, sample_rate=16000):
     try:
         # Convert the audio data to the format expected by Whisper
         audio = np.concatenate(audio_data)
+        
+        # Ensure audio is single channel (mono)
+        if len(audio.shape) > 1 and audio.shape[1] > 1:
+            logger.info(f"Converting audio from {audio.shape[1]} channels to mono")
+            audio = audio.mean(axis=1)
+        
+        # Reshape if needed to ensure it's a 1D array
+        audio = audio.flatten()
+        
         result = transcriber({"raw": audio, "sampling_rate": sample_rate})
         transcription = result["text"].strip()
         return transcription
@@ -143,8 +152,17 @@ def transcribe_audio(audio_data, sample_rate=16000):
         return None
 
 
-def send_to_llm(prompt):
-    """Send prompt to LLM server and get response."""
+def send_to_llm(prompt, pre_prompt=None):
+    """
+    Send prompt to LLM server and get response.
+    
+    Args:
+        prompt: The user's question or prompt
+        pre_prompt: Optional instructions for how to answer (e.g., "explain like I'm 5")
+    
+    Returns:
+        The LLM's response as text
+    """
     if not SERVER_URL:
         logger.error("Server URL not set")
         return "Server connection not configured."
@@ -154,12 +172,17 @@ def send_to_llm(prompt):
         headers = {"Content-Type": "application/json"}
         data = {
             "prompt": prompt,
-            "max_tokens": 256,
-            "temperature": 0.7,
-            "top_p": 0.95
+            "max_tokens": 64,  # Shorter responses work better for voice
+            "temperature": 0.3  # More consistent responses
         }
         
+        # Add pre_prompt if provided
+        if pre_prompt:
+            data["pre_prompt"] = pre_prompt
+            logger.debug(f"Using pre-prompt: {pre_prompt}")
+        
         # Send the request
+        logger.debug(f"Sending prompt to LLM: {prompt}")
         response = requests.post(
             f"{SERVER_URL}/v1/completions",
             headers=headers,
@@ -169,7 +192,10 @@ def send_to_llm(prompt):
         
         # Process the response
         if response.status_code == 200:
-            return response.json()["text"]
+            # The server now handles all response cleaning
+            result = response.json()["text"]
+            logger.debug(f"Received response: {result}")
+            return result
         else:
             logger.error(f"API error: {response.status_code} - {response.text}")
             return f"Error: Failed to get response from server. Status code: {response.status_code}"

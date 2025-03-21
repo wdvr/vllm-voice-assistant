@@ -73,13 +73,14 @@ class PromptFormatter:
         # If no match found, return default
         return "default"
     
-    def format_prompt(self, prompt: str, model_path: str) -> str:
+    def format_prompt(self, prompt: str, model_path: str, pre_prompt: Optional[str] = None) -> str:
         """
         Format a prompt for the specified model.
         
         Args:
             prompt: The user's prompt
             model_path: The model path or identifier
+            pre_prompt: Optional instructions for how to answer (e.g., "explain like I'm 5")
             
         Returns:
             Formatted prompt string
@@ -87,18 +88,32 @@ class PromptFormatter:
         model_type = self.detect_model_type(model_path)
         template = self.templates.get(model_type, self.templates["default"])
         
+        # Build the final prompt with pre-prompt if provided
+        final_prompt = prompt
+        
+        # Add pre-prompt instructions if provided
+        if pre_prompt and pre_prompt.strip():
+            final_prompt = f"{pre_prompt}: {prompt}"
+        
+        # Always add instruction for concise response
+        final_prompt = f"{final_prompt} Please provide a concise, direct answer."
+        
         # Get chat template and populate it
         chat_template = template["chat"]
         
         # Check if system prompt should be included
         if "{system_prompt}" in chat_template and "system_prompt" in template:
+            # Enhance system prompt to encourage concise answers
+            system_prompt = template["system_prompt"]
+            system_prompt += " Always provide concise, direct answers to questions."
+            
             return chat_template.format(
-                prompt=prompt,
-                system_prompt=template["system_prompt"]
+                prompt=final_prompt,
+                system_prompt=system_prompt
             )
         
         # Otherwise just use the prompt
-        return chat_template.format(prompt=prompt)
+        return chat_template.format(prompt=final_prompt)
     
     def parse_response(self, response: str, model_path: str) -> str:
         """
@@ -114,15 +129,21 @@ class PromptFormatter:
         model_type = self.detect_model_type(model_path)
         template = self.templates.get(model_type, self.templates["default"])
         
-        # Use the appropriate parser
+        # Use the appropriate parser based on model type
         parser = template.get("parser", self._parse_general_response)
         
         # For debugging
         print(f"Raw response: {repr(response)}")
-        parsed = parser(response)
-        print(f"Parsed response: {repr(parsed)}")
         
-        return parsed
+        # First pass: model-specific parsing
+        parsed = parser(response)
+        
+        # Second pass: general cleanup for all models
+        cleaned = self._clean_response(parsed)
+        
+        print(f"Parsed response: {repr(cleaned)}")
+        
+        return cleaned
     
     def _parse_llama_response(self, response: str) -> str:
         """Parse response from Llama models."""
@@ -133,6 +154,48 @@ class PromptFormatter:
     def _parse_general_response(self, response: str) -> str:
         """General response parser for models without special requirements."""
         return response.strip()
+    
+    def _clean_response(self, response: str) -> str:
+        """
+        Apply general cleanup to any model response to create a clean, concise answer.
+        
+        Args:
+            response: The initially parsed response
+            
+        Returns:
+            A cleaned response suitable for voice output
+        """
+        if not response or not response.strip():
+            return "I don't have an answer for that."
+        
+        # Remove any remaining special tokens
+        cleaned_text = response.strip()
+        
+        # Check for conversation markers and truncate if found
+        conversation_markers = [
+            "<|user|>", "<|human|>", "<|assistant|>", "<|bot|>", "<|end|>",
+            "\nUser:", "\nHuman:", "\nAssistant:", "\nBot:"
+        ]
+        
+        for marker in conversation_markers:
+            pos = cleaned_text.find(marker)
+            if pos > 0:  # Only truncate if marker is not at the beginning
+                cleaned_text = cleaned_text[:pos].strip()
+        
+        # Get just the first meaningful line or paragraph
+        lines = [line for line in cleaned_text.split('\n') if line.strip()]
+        
+        if not lines:
+            return "I don't have an answer for that."
+            
+        # For voice output, the first line is usually sufficient
+        # But if it's very short, include the second line too
+        if len(lines) > 1 and len(lines[0]) < 15:
+            first_response = " ".join(lines[:2]).strip()
+        else:
+            first_response = lines[0].strip()
+        
+        return first_response
 
 
 # Singleton instance for easy import

@@ -15,6 +15,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 
 # Set up logging
 logging.basicConfig(
@@ -23,8 +24,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Global variables
+model_path = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI.
+    Replaces deprecated @app.on_event("startup") and @app.on_event("shutdown").
+    """
+    # Startup
+    logger.info("Starting up mock vLLM server...")
+    yield
+    # Shutdown
+    logger.info("Shutting down mock vLLM server...")
+
+
 # Initialize FastAPI
-app = FastAPI(title="Mock Voice Assistant vLLM API")
+app = FastAPI(title="Mock Voice Assistant vLLM API", lifespan=lifespan)
 
 # Add CORS middleware
 app.add_middleware(
@@ -34,9 +52,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Global variables
-model_path = None
 
 
 class GenerationRequest(BaseModel):
@@ -62,10 +77,7 @@ class ModelInfoResponse(BaseModel):
     gpu_memory_usage: str = Field(..., description="GPU memory usage")
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the server on startup."""
-    logger.info("Starting up mock vLLM server...")
+# Startup event handler has been replaced with the lifespan context manager
 
 
 @app.get("/v1/models", response_model=Dict[str, List[str]])
@@ -134,6 +146,9 @@ def generate_mock_response(prompt: str) -> str:
     
     elif "thank" in prompt_lower:
         return "You're welcome! Is there anything else I can help with?"
+    
+    elif "capital of france" in prompt_lower:
+        return "The capital of France is Paris."
     
     elif any(word in prompt_lower for word in ["bye", "goodbye", "exit", "quit"]):
         return "Goodbye! Have a great day!"

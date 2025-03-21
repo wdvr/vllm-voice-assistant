@@ -123,6 +123,30 @@ class TestVoiceClient(unittest.TestCase):
         # Verify the function worked correctly
         self.assertEqual(result, "Hello world")
         client.voice_client.transcriber.assert_called_once()
+        
+    def test_transcribe_audio_multi_channel(self):
+        """Test audio transcription with multi-channel audio."""
+        # Setup mock
+        import client.voice_client
+        client.voice_client.transcriber = MagicMock()
+        client.voice_client.transcriber.return_value = {"text": "Hello world"}
+        
+        # Create sample multi-channel audio data (stereo)
+        audio_data = [np.ones((1000, 2), dtype=np.float32)]
+        
+        # Call the function
+        result = transcribe_audio(audio_data)
+        
+        # Verify the function worked correctly
+        self.assertEqual(result, "Hello world")
+        
+        # Verify that the transcriber was called with flattened single-channel audio
+        args, kwargs = client.voice_client.transcriber.call_args
+        processed_audio = args[0]["raw"]
+        
+        # Check that audio is 1D (single channel)
+        self.assertEqual(len(processed_audio.shape), 1, "Audio should be single-channel")
+        self.assertEqual(processed_audio.shape[0], 1000, "Audio length should be preserved")
     
     def test_text_to_speech(self):
         """Test text-to-speech conversion."""

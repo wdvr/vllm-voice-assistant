@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from vllm import LLM, SamplingParams
+from contextlib import asynccontextmanager
 
 from server.prompt_formatter import formatter
 
@@ -27,8 +28,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Global variables
+llm = None
+model_path = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI.
+    Replaces deprecated @app.on_event("startup") and @app.on_event("shutdown").
+    """
+    # Startup: Initialize the LLM
+    logger.info("Starting up vLLM server...")
+    yield
+    # Shutdown: Add cleanup code here if needed
+    logger.info("Shutting down vLLM server...")
+
+
 # Initialize FastAPI
-app = FastAPI(title="Voice Assistant vLLM API")
+app = FastAPI(title="Voice Assistant vLLM API", lifespan=lifespan)
 
 # Add CORS middleware
 app.add_middleware(
@@ -44,10 +63,10 @@ llm = None
 model_path = None
 args = None
 
-
 class GenerationRequest(BaseModel):
     """Request body for text generation."""
     prompt: str = Field(..., description="The prompt to generate text from")
+    pre_prompt: Optional[str] = Field(None, description="Optional instructions for how to answer (e.g., 'explain like I'm 5')")
     max_tokens: int = Field(512, description="Maximum number of tokens to generate")
     temperature: float = Field(0.7, description="Sampling temperature")
     top_p: float = Field(0.95, description="Top-p sampling parameter")
@@ -68,10 +87,7 @@ class ModelInfoResponse(BaseModel):
     gpu_memory_usage: str = Field(..., description="GPU memory usage")
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the LLM on server startup."""
-    logger.info("Starting up vLLM server...")
+# Startup event handler has been replaced with the lifespan context manager
 
 
 @app.get("/v1/models", response_model=Dict[str, List[str]])
@@ -144,15 +160,25 @@ async def generate(request: GenerationRequest):
         raise HTTPException(status_code=503, detail="Model not loaded")
     
     try:
-        # Format the prompt based on the model type
-        formatted_prompt = formatter.format_prompt(request.prompt, model_path)
+        # Format the prompt based on the model type and pre_prompt if provided
+        formatted_prompt = formatter.format_prompt(
+            prompt=request.prompt,
+            model_path=model_path,
+            pre_prompt=request.pre_prompt
+        )
         logger.debug(f"Original prompt: {request.prompt}")
+        if request.pre_prompt:
+            logger.debug(f"Pre-prompt: {request.pre_prompt}")
         logger.debug(f"Formatted prompt: {formatted_prompt}")
         
+        # Use lower temperature and fewer tokens for more concise, predictable responses
+        max_tokens = min(request.max_tokens, 64) if request.max_tokens > 64 else request.max_tokens
+        temperature = min(request.temperature, 0.3) if request.temperature > 0.3 else request.temperature
+        
         sampling_params = SamplingParams(
-            temperature=request.temperature,
+            temperature=temperature,
             top_p=request.top_p,
-            max_tokens=request.max_tokens,
+            max_tokens=max_tokens,
             presence_penalty=request.presence_penalty,
             frequency_penalty=request.frequency_penalty,
         )
