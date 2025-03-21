@@ -179,12 +179,97 @@ async def generate(request: GenerationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def download_model(model_name: str) -> bool:
+    """Download a model from Hugging Face if it doesn't exist locally."""
+    from huggingface_hub import snapshot_download, HfApi
+    import os
+
+    # Map of supported models and their HF repos
+    model_repos = {
+        # Gated models (require Hugging Face login)
+        "llama3-8b": "meta-llama/Meta-Llama-3-8B",
+        "llama3-8b-instruct": "meta-llama/Meta-Llama-3-8B-Instruct",
+        
+        # Open access models
+        "phi-2": "microsoft/phi-2",
+        "deepseek-coder-6.7b": "deepseek-ai/deepseek-coder-6.7b-base",
+        "deepseek-coder-1.3b": "deepseek-ai/deepseek-coder-1.3b-base"
+    }
+    
+    if model_name not in model_repos:
+        logger.error(f"Model {model_name} not found in supported models list")
+        return False
+    
+    # Check if model is gated (requires login)
+    gated_models = ["llama3-8b", "llama3-8b-instruct"]
+    if model_name in gated_models:
+        try:
+            # Check if user is logged in
+            api = HfApi()
+            try:
+                token_present = api.whoami()
+                logger.info("Hugging Face authentication token found")
+            except Exception:
+                logger.error(
+                    f"Model {model_name} requires Hugging Face authentication.\n"
+                    "Please run 'huggingface-cli login' and follow the instructions,\n"
+                    "or download the model manually from https://huggingface.co/"
+                )
+                return False
+        except Exception as e:
+            logger.error(f"Error checking authentication: {e}")
+            return False
+    
+    try:
+        # Create models directory if it doesn't exist
+        os.makedirs("./models", exist_ok=True)
+        
+        # Create model-specific directory
+        model_dir = f"./models/{model_name}"
+        os.makedirs(model_dir, exist_ok=True)
+        
+        logger.info(f"Downloading {model_name} from Hugging Face ({model_repos[model_name]})...")
+        snapshot_download(
+            repo_id=model_repos[model_name],
+            local_dir=model_dir,
+            local_dir_use_symlinks=False,
+            resume_download=True
+        )
+        logger.info(f"Successfully downloaded {model_name} to {model_dir}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to download model {model_name}: {e}")
+        return False
+
+
 def load_model(model_path_arg: str, gpu_mem_utilization: float, quantization: Optional[str] = None):
     """Load the LLM model."""
     global llm, model_path
     
     # Set global model path for use in prompt formatting
     model_path = model_path_arg
+    
+    # Check if model exists locally, if not try to download it
+    if not os.path.exists(model_path):
+        # Check if it's a predefined model name rather than a path
+        model_name = os.path.basename(model_path)
+        
+        # List of supported models for auto-download
+        supported_models = ["llama3-8b", "llama3-8b-instruct", "phi-2", 
+                           "deepseek-coder-6.7b", "deepseek-coder-1.3b"]
+        
+        if model_name in supported_models:
+            logger.info(f"Model {model_name} not found locally. Attempting to download...")
+            if download_model(model_name):
+                model_path = f"./models/{model_name}"
+                logger.info(f"Model downloaded successfully. Using path: {model_path}")
+            else:
+                logger.error(f"Failed to download model {model_name}")
+                return False
+        else:
+            logger.error(f"Model path {model_path} does not exist and is not a recognized model name")
+            logger.error(f"Supported models: {', '.join(supported_models)}")
+            return False
     
     try:
         tensor_parallel_size = 1  # Single GPU setup
