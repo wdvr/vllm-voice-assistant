@@ -175,6 +175,7 @@ async def generate(request: GenerationRequest):
         max_tokens = min(request.max_tokens, 64) if request.max_tokens > 64 else request.max_tokens
         temperature = min(request.temperature, 0.3) if request.temperature > 0.3 else request.temperature
         
+        # Configure initial sampling parameters
         sampling_params = SamplingParams(
             temperature=temperature,
             top_p=request.top_p,
@@ -183,11 +184,54 @@ async def generate(request: GenerationRequest):
             frequency_penalty=request.frequency_penalty,
         )
         
-        outputs = llm.generate(formatted_prompt, sampling_params)
-        raw_text = outputs[0].outputs[0].text
+        # Retry logic - try up to 3 times with different parameters if needed
+        max_retries = 3
+        initial_temperature = temperature
         
-        # Parse the response to clean it up based on model type
-        generated_text = formatter.parse_response(raw_text, model_path)
+        for attempt in range(1, max_retries + 1):
+            # Generate text using current parameters
+            outputs = llm.generate(formatted_prompt, sampling_params)
+            raw_text = outputs[0].outputs[0].text
+            
+            # Parse the response to clean it up based on model type
+            generated_text = formatter.parse_response(raw_text, model_path)
+            
+            # Check if we got a meaningful response
+            if (generated_text and 
+                generated_text.strip() and 
+                generated_text.strip() != "I don't have an answer for that." and
+                not generated_text.startswith("<|") and
+                not generated_text.startswith("Model did not generate")):
+                
+                # We got a good response, use it
+                logger.debug(f"Got valid response on attempt {attempt}")
+                break
+            
+            # If we've reached the maximum retries, just use what we have
+            if attempt >= max_retries:
+                logger.warning(f"Failed to get good response after {max_retries} attempts")
+                # Use the last response (even if it's not ideal)
+                break
+            
+            # Adjust parameters for the next attempt
+            logger.warning(f"Empty or invalid response on attempt {attempt}, retrying with adjusted parameters")
+            
+            # Try a higher temperature for the next attempt to increase diversity
+            temperature = min(initial_temperature + (0.2 * attempt), 0.9)
+            
+            # Increase max tokens slightly
+            new_max_tokens = max_tokens + (20 * attempt)
+            
+            # Update the sampling parameters
+            sampling_params = SamplingParams(
+                temperature=temperature,
+                top_p=0.95,  # Keep high top_p for diversity
+                max_tokens=new_max_tokens,
+                presence_penalty=request.presence_penalty + (0.1 * attempt),  # Increase penalty
+                frequency_penalty=request.frequency_penalty
+            )
+            
+            logger.debug(f"Retry {attempt} with temperature={temperature}, max_tokens={new_max_tokens}")
         
         # Estimate token counts (actual counts would require tokenizer)
         prompt_tokens = len(request.prompt.split())

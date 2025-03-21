@@ -57,6 +57,7 @@ app.add_middleware(
 class GenerationRequest(BaseModel):
     """Request body for text generation."""
     prompt: str = Field(..., description="The prompt to generate text from")
+    pre_prompt: Optional[str] = Field(None, description="Optional instructions for how to answer (e.g., 'explain like I'm 5')")
     max_tokens: int = Field(512, description="Maximum number of tokens to generate")
     temperature: float = Field(0.7, description="Sampling temperature")
     top_p: float = Field(0.95, description="Top-p sampling parameter")
@@ -104,11 +105,26 @@ async def generate(request: GenerationRequest):
         # Log the prompt for debugging
         logger.debug(f"Received prompt: {request.prompt}")
         
-        # Generate a simple mock response
-        response_text = generate_mock_response(request.prompt)
+        # Check for pre_prompt if provided
+        if request.pre_prompt:
+            logger.debug(f"Pre-prompt: {request.pre_prompt}")
+            # For mock server, modify the prompt to include the pre_prompt
+            combined_prompt = f"{request.pre_prompt}: {request.prompt}"
+        else:
+            combined_prompt = request.prompt
+        
+        # For simulation purposes, sometimes generate poor responses to test retry logic
+        # This will randomly fail about 10% of the time to test retries
+        import random
+        if random.random() < 0.10:
+            logger.warning("Simulating a poor response (for retry testing)")
+            response_text = "<|user|>"  # Simulating a response that should trigger a retry
+        else:
+            # Generate a normal mock response
+            response_text = generate_mock_response(combined_prompt)
         
         # Estimate token counts (very rough approximation)
-        prompt_tokens = len(request.prompt.split())
+        prompt_tokens = len(combined_prompt.split())
         completion_tokens = len(response_text.split())
         
         return {
