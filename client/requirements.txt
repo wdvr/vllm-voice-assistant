@@ -15,5 +15,5 @@ pydantic>=2.7.0
 pytest>=7.4.0
 pytest-mock>=3.11.1
 
-# macOS specific dependencies
-pyobjc>=9.0.1  # Required for pyttsx3 on macOS
+# macOS specific dependencies (only installed on macOS)
+pyobjc>=9.0.1; platform_system == "Darwin"  # Required for pyttsx3 on macOS

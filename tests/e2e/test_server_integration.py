@@ -53,7 +53,7 @@ class TestServerIntegration(unittest.TestCase):
                     os.path.join(root_dir, "server", "vllm_server.py"),
                     "--model", TEST_MODEL_PATH,
                     "--port", "8765",
-                    "--gpu-memory-utilization", "0.5"
+                    "--gpu-memory-utilization", "0.9"
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -101,7 +101,7 @@ class TestServerIntegration(unittest.TestCase):
             logger.error("Server process terminated unexpectedly")
             logger.error(f"STDOUT: {stdout}")
             logger.error(f"STDERR: {stderr}")
-            self.skipTest("Server process terminated unexpectedly")
+            self.fail("Server process terminated unexpectedly")
         
         # Wait a bit for server to fully initialize
         time.sleep(5)
@@ -151,7 +151,7 @@ class TestServerIntegration(unittest.TestCase):
                 stdout, stderr = self.server_process.communicate()
                 logger.error(f"Server failed during test. STDOUT: {stdout[:500]}")
                 logger.error(f"STDERR: {stderr[:500]}")
-                self.skipTest(f"Server crashed: {e}")
+                self.fail(f"Server crashed: {e}")
             else:
                 # Server is running but request failed
                 self.fail(f"Request failed: {e}")
