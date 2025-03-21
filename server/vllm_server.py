@@ -42,6 +42,7 @@ app.add_middleware(
 # Global variables
 llm = None
 model_path = None
+args = None
 
 
 class GenerationRequest(BaseModel):
@@ -179,7 +180,7 @@ async def generate(request: GenerationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def download_model(model_name: str) -> bool:
+def download_model(model_name: str, quantization: Optional[str] = None) -> tuple:
     """Download a model from Hugging Face if it doesn't exist locally."""
     from huggingface_hub import snapshot_download, HfApi
     import os
@@ -196,9 +197,25 @@ def download_model(model_name: str) -> bool:
         "deepseek-coder-1.3b": "deepseek-ai/deepseek-coder-1.3b-base"
     }
     
-    if model_name not in model_repos:
-        logger.error(f"Model {model_name} not found in supported models list")
-        return False
+    # Quantized model versions for memory efficiency (optional)
+    quantized_model_repos = {
+        # GPTQ versions
+        "deepseek-coder-6.7b": "TheBloke/deepseek-coder-6.7B-base-GPTQ",
+        "llama3-8b": "TheBloke/Meta-Llama-3-8B-GPTQ"
+    }
+    
+    # Check if we're looking for a quantized version
+    if quantization == "gptq" and model_name in quantized_model_repos:
+        logger.info(f"Using quantized GPTQ version of {model_name}")
+        repo_id = quantized_model_repos[model_name]
+        model_dir = f"./models/{model_name}-gptq"
+    else:
+        # Regular model repository
+        if model_name not in model_repos:
+            logger.error(f"Model {model_name} not found in supported models list")
+            return False, None
+        repo_id = model_repos[model_name]
+        model_dir = f"./models/{model_name}"
     
     # Check if model is gated (requires login)
     gated_models = ["llama3-8b", "llama3-8b-instruct"]
@@ -225,26 +242,26 @@ def download_model(model_name: str) -> bool:
         os.makedirs("./models", exist_ok=True)
         
         # Create model-specific directory
-        model_dir = f"./models/{model_name}"
         os.makedirs(model_dir, exist_ok=True)
         
-        logger.info(f"Downloading {model_name} from Hugging Face ({model_repos[model_name]})...")
+        logger.info(f"Downloading model from Hugging Face ({repo_id})...")
         snapshot_download(
-            repo_id=model_repos[model_name],
+            repo_id=repo_id,
             local_dir=model_dir,
             local_dir_use_symlinks=False,
             resume_download=True
         )
-        logger.info(f"Successfully downloaded {model_name} to {model_dir}")
-        return True
+        logger.info(f"Successfully downloaded model to {model_dir}")
+        return True, model_dir  # Return success and the directory path
     except Exception as e:
         logger.error(f"Failed to download model {model_name}: {e}")
-        return False
+        return False, None
 
 
-def load_model(model_path_arg: str, gpu_mem_utilization: float, quantization: Optional[str] = None):
+def load_model(model_path_arg: str, gpu_mem_utilization: float, quantization: Optional[str] = None, 
+              dtype: Optional[object] = None, max_model_len: Optional[int] = None):
     """Load the LLM model."""
-    global llm, model_path
+    global llm, model_path, args
     
     # Set global model path for use in prompt formatting
     model_path = model_path_arg
@@ -260,8 +277,9 @@ def load_model(model_path_arg: str, gpu_mem_utilization: float, quantization: Op
         
         if model_name in supported_models:
             logger.info(f"Model {model_name} not found locally. Attempting to download...")
-            if download_model(model_name):
-                model_path = f"./models/{model_name}"
+            success, downloaded_path = download_model(model_name, quantization)
+            if success:
+                model_path = downloaded_path
                 logger.info(f"Model downloaded successfully. Using path: {model_path}")
             else:
                 logger.error(f"Failed to download model {model_name}")
@@ -288,12 +306,26 @@ def load_model(model_path_arg: str, gpu_mem_utilization: float, quantization: Op
         logger.info(f"Detected model type: {model_type}")
         logger.info(f"Using appropriate prompt templates for {model_type} models")
             
-        llm = LLM(
-            model=model_path,
-            tensor_parallel_size=tensor_parallel_size,
-            gpu_memory_utilization=gpu_mem_utilization,
+        # Add dtype to kwargs if specified
+        model_kwargs = {
+            "model": model_path,
+            "tensor_parallel_size": tensor_parallel_size,
+            "gpu_memory_utilization": gpu_mem_utilization,
             **quantization_kwargs
-        )
+        }
+        
+        # Add dtype if specified
+        if dtype is not None:
+            model_kwargs["dtype"] = dtype
+            logger.info(f"Using dtype: {dtype}")
+            
+        # Add max_model_len if specified 
+        max_model_len = getattr(args, 'max_model_len', None)
+        if max_model_len is not None:
+            model_kwargs["max_model_len"] = max_model_len
+            logger.info(f"Using max_model_len: {max_model_len}")
+            
+        llm = LLM(**model_kwargs)
         logger.info(f"Model loaded: {model_path}")
         
         # Log max sequence length safely
@@ -316,6 +348,7 @@ def load_model(model_path_arg: str, gpu_mem_utilization: float, quantization: Op
 
 
 def main():
+    global args
     parser = argparse.ArgumentParser(description="Run a vLLM server for the voice assistant")
     parser.add_argument("--model", type=str, required=True, help="Path to the model or model name")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
@@ -323,12 +356,29 @@ def main():
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.9,
                       help="Fraction of GPU memory to use (0.0 to 1.0)")
     parser.add_argument("--quantization", type=str, choices=["awq", "gptq", "squeezellm"], 
-                      help="Quantization method to use (if supported by the model)")
+                      help="Quantization method to use (for large models on limited VRAM)")
+    parser.add_argument("--dtype", type=str, choices=["float16", "half", "bfloat16", "bf16", "float", "float32"],
+                      help="Data type for model weights (e.g., float16, bfloat16)")
+    parser.add_argument("--max-model-len", type=int, default=None,
+                      help="Maximum sequence length for the model context window")
     
     args = parser.parse_args()
     
     # Load the model
-    if not load_model(args.model, args.gpu_memory_utilization, args.quantization):
+    dtype = None
+    if args.dtype:
+        if args.dtype in ["float16", "half"]:
+            import torch
+            dtype = torch.float16
+        elif args.dtype in ["bfloat16", "bf16"]:
+            import torch
+            dtype = torch.bfloat16
+        elif args.dtype in ["float", "float32"]:
+            import torch
+            dtype = torch.float32
+    
+    if not load_model(args.model, args.gpu_memory_utilization, args.quantization, 
+                     dtype=dtype, max_model_len=args.max_model_len):
         logger.error("Failed to load model. Exiting.")
         return
     
