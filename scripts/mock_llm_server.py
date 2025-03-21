@@ -39,6 +39,14 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     logger.info("Shutting down mock vLLM server...")
+    
+    # Clean up any resources if needed
+    try:
+        # Since this is a mock server, we don't actually have NCCL process groups,
+        # but we'll include similar code structure for consistency
+        logger.debug("Cleaning up mock server resources")
+    except Exception as e:
+        logger.warning(f"Error during mock server cleanup: {e}")
 
 
 # Initialize FastAPI

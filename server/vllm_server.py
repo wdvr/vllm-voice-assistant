@@ -42,8 +42,31 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize the LLM
     logger.info("Starting up vLLM server...")
     yield
-    # Shutdown: Add cleanup code here if needed
+    # Shutdown: Clean up resources
     logger.info("Shutting down vLLM server...")
+    
+    # Clean up NCCL process groups if torch distributed is initialized
+    try:
+        import torch.distributed as dist
+        if dist.is_initialized():
+            logger.info("Destroying PyTorch distributed process group")
+            dist.destroy_process_group()
+            logger.info("NCCL process group destroyed successfully")
+    except ImportError:
+        logger.debug("PyTorch distributed not imported, no cleanup needed")
+    except Exception as e:
+        logger.warning(f"Error destroying process group: {e}")
+        
+    # Release any other resources
+    global llm
+    if llm is not None:
+        try:
+            logger.info("Releasing LLM resources")
+            # If vLLM provides a cleanup method in the future, call it here
+            llm = None
+            logger.info("LLM resources released")
+        except Exception as e:
+            logger.warning(f"Error releasing LLM resources: {e}")
 
 
 # Initialize FastAPI
