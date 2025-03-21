@@ -73,6 +73,7 @@ def run_server_unit_tests():
     # Get test scripts
     prompt_formatter_test = os.path.join(current_dir, 'unit', 'server', 'test_prompt_formatter.py')
     server_test = os.path.join(current_dir, 'unit', 'server', 'test_server.py')
+    gguf_test = os.path.join(current_dir, 'unit', 'server', 'test_gguf', 'test_prompt_with_gguf.py')
     
     # Use the virtual environment's Python if available
     venv_python = os.path.join(project_root, "venv", "bin", "python")
@@ -100,6 +101,17 @@ def run_server_unit_tests():
         logger.error(f"Error running server tests: {e}")
         server_success = False
     
+    # Run the GGUF tests (optional - might not have dependencies)
+    logger.info("Running GGUF model tests...")
+    try:
+        gguf_result = subprocess.run([python_exec, gguf_test], check=False)
+        gguf_success = gguf_result.returncode == 0
+        if not gguf_success:
+            logger.warning("GGUF tests skipped or failed - may need ctransformers package")
+    except Exception as e:
+        logger.warning(f"Error running GGUF tests: {e}")
+        gguf_success = True  # Don't fail the whole suite if GGUF tests can't run
+    
     return formatter_success and server_success
 
 
@@ -115,24 +127,43 @@ def run_e2e_tests(interactive=False):
     venv_python = os.path.join(project_root, "venv", "bin", "python")
     python_exec = venv_python if os.path.exists(venv_python) else sys.executable
     
-    # Build the command
+    # Build the command for voice assistant test
     e2e_script = os.path.join(current_dir, 'e2e', 'test_voice_assistant.py')
     mode = "both" if interactive else "auto"
     
-    cmd = [
+    voice_cmd = [
         python_exec,
         e2e_script,
         "--mode", mode
     ]
     
-    # Run the command
-    logger.info(f"Running command: {' '.join(cmd)}")
+    # Build the command for server integration test
+    server_integration_script = os.path.join(current_dir, 'e2e', 'test_server_integration.py')
+    
+    # Run the voice assistant test
+    logger.info(f"Running voice assistant e2e test: {' '.join(voice_cmd)}")
     try:
-        result = subprocess.run(cmd, check=True)
-        return result.returncode == 0
-    except subprocess.CalledProcessError:
-        logger.error("End-to-end tests failed")
-        return False
+        voice_result = subprocess.run(voice_cmd, check=False)
+        voice_success = voice_result.returncode == 0
+        if not voice_success:
+            logger.error("Voice assistant end-to-end tests failed")
+    except Exception as e:
+        logger.error(f"Error running voice assistant e2e tests: {e}")
+        voice_success = False
+    
+    # Run the server integration test
+    logger.info("Running server integration test...")
+    try:
+        server_result = subprocess.run([python_exec, server_integration_script], check=False)
+        server_success = server_result.returncode == 0
+        if not server_success:
+            logger.error("Server integration tests failed or were skipped (model not found)")
+    except Exception as e:
+        logger.error(f"Error running server integration tests: {e}")
+        server_success = False
+    
+    # Return overall success
+    return voice_success and server_success
 
 
 def main():
